@@ -1,0 +1,19 @@
+name: Uptime
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check /api/health
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          if [ -z "$APP_URL" ]; then echo "Set the repository variable APP_URL (e.g. https://ask-hr.vercel.app)"; exit 1; fi
+          # retry once: Neon may be waking up from scale-to-zero
+          curl -fsS --max-time 25 --retry 1 --retry-delay 10 "$APP_URL/api/health" | tee health.json
+          grep -q '"status":"ok"' health.json

@@ -1,0 +1,35 @@
+name: Nightly eval
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      # Production database and model settings: catches model/provider drift and broken retrieval.
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+      MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+      CHAT_PROVIDER: ${{ vars.CHAT_PROVIDER }}
+      CHAT_MODEL: ${{ vars.CHAT_MODEL }}
+      CHAT_MODEL_FALLBACK: ${{ vars.CHAT_MODEL_FALLBACK }}
+      JUDGE_MODEL: ${{ vars.JUDGE_MODEL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # fails the job (and so sends the usual notification email) below the quality gate
+      - run: pnpm eval --subset 12 --tag nightly --min-correctness 0.8 --min-refusal 0.8
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-report
+          path: eval/reports/

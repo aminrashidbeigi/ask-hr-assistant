@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Lint, typecheck, unit tests, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm validate:corpus
+      - run: pnpm test
+      - run: pnpm build
+        env:
+          GIT_SHA: ${{ github.sha }}
+
+  integration:
+    name: Integration (pgvector + mock embeddings)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: askhr
+          POSTGRES_PASSWORD: askhr
+          POSTGRES_DB: askhr
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U askhr -d askhr"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      DATABASE_URL: postgres://askhr:askhr@localhost:5432/askhr
+      # deterministic fake vectors: CI needs no API key
+      EMBEDDING_PROVIDER: mock
+      RUN_INTEGRATION: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:migrate
+      - run: pnpm ingest
+      - name: Re-running ingest must embed nothing (idempotency)
+        run: pnpm ingest | tee ingest.log && grep -q "0 embedded" ingest.log
+      - run: pnpm test
+
+  eval:
+    name: Eval subset (label "run-eval")
+    if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'run-eval')
+    needs: [checks, integration]
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+      MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+      CHAT_PROVIDER: ${{ vars.CHAT_PROVIDER }}
+      CHAT_MODEL: ${{ vars.CHAT_MODEL }}
+      CHAT_MODEL_FALLBACK: ${{ vars.CHAT_MODEL_FALLBACK }}
+      JUDGE_MODEL: ${{ vars.JUDGE_MODEL }}
+    steps:
+      - name: Skip when secrets are missing
+        id: gate
+        run: |
+          if [ -z "$DATABASE_URL" ] || { [ -z "$GOOGLE_GENERATIVE_AI_API_KEY" ] && [ -z "$MISTRAL_API_KEY" ]; }; then
+            echo "run=false" >> "$GITHUB_OUTPUT"; echo "Model/database secrets are not configured; skipping eval."
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.run == 'true'
+      - uses: pnpm/action-setup@v4
+        if: steps.gate.outputs.run == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.run == 'true'
+        with:
+          node-version: 22
+          cache: pnpm
+      - if: steps.gate.outputs.run == 'true'
+        run: pnpm install --frozen-lockfile
+      - if: steps.gate.outputs.run == 'true'
+        run: pnpm eval --subset 12 --tag pr
+      - name: Comment summary on the PR
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const file = fs.readdirSync('eval/reports').filter(f => f.endsWith('-pr.md')).sort().pop();
+            const body = fs.readFileSync(`eval/reports/${file}`, 'utf8').split('## By question type')[0];
+            await github.rest.issues.createComment({
+              ...context.repo, issue_number: context.issue.number,
+              body: `### Eval (subset of 12)\n\n${body}`,
+            });

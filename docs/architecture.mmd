@@ -1,0 +1,18 @@
+flowchart LR
+  U[Employee<br/>Browser] -->|question + persona| API[/api/chat<br/>Next.js route/]
+  API --> RL[Rate limit<br/>Upstash]
+  API --> PII[PII redaction]
+  PII --> AG[Agent loop<br/>Vercel AI SDK streamText]
+  AG -->|tool: searchPolicies| RET[Hybrid retriever]
+  RET --> VEC[(pgvector)]
+  RET --> FTS[(Postgres FTS)]
+  RET --> RRF[RRF fusion + persona filter + threshold]
+  AG -->|tool: escalateToHR| ESC[HR ticket stub]
+  AG --> LLM[(LLM provider)]
+  AG -->|stream answer + citations| U
+  AG -. OTel traces .-> LF[Langfuse]
+  API -. redacted log .-> QL[(query_logs)]
+  U -->|thumbs up/down| FB[/api/feedback/] --> QL & LF
+  ING[Ingestion script] -->|chunk, hash, embed| VEC
+  EV[Eval harness] --> API
+  ADM[/admin dashboard/] --> QL
