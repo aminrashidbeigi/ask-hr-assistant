@@ -16,7 +16,8 @@
     "eval": "tsx eval/run.ts",
     "validate:corpus": "tsx scripts/validate-corpus.ts",
     "e2e": "playwright test",
-    "db:check": "tsx scripts/db-check.ts"
+    "db:check": "tsx scripts/db-check.ts",
+    "logs": "tsx scripts/logs.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "4.0.99",

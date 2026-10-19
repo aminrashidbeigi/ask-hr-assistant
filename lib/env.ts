@@ -9,6 +9,8 @@ const schema = z.object({
   OPENAI_API_KEY: optional(z.string()),
   CHAT_PROVIDER: z.enum(["google", "openai"]).default("google"),
   CHAT_MODEL: z.string().default("gemini-2.5-flash"),
+  /** "none" disables failover */
+  CHAT_MODEL_FALLBACK: z.preprocess((v) => (v === "" ? undefined : v), z.string().default("gemini-3.5-flash-lite")),
   JUDGE_MODEL: z.string().default("gemini-3.5-flash"),
   EMBEDDING_PROVIDER: z.enum(["google", "openai", "mock"]).default("google"),
   EMBEDDING_MODEL: z.string().default("gemini-embedding-001"),
