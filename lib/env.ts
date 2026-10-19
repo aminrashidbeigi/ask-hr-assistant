@@ -6,13 +6,12 @@ const optional = <T extends z.ZodType>(schema: T) =>
 
 const schema = z.object({
   GOOGLE_GENERATIVE_AI_API_KEY: optional(z.string()),
-  MISTRAL_API_KEY: optional(z.string()),
   OPENAI_API_KEY: optional(z.string()),
-  CHAT_PROVIDER: z.enum(["google", "mistral", "openai"]).default("google"),
-  CHAT_MODEL: z.string().default("gemini-2.5-flash"),
-  /** "none" disables failover */
-  CHAT_MODEL_FALLBACK: z.preprocess((v) => (v === "" ? undefined : v), z.string().default("gemini-3.5-flash-lite")),
-  JUDGE_MODEL: z.string().default("gemini-3.5-flash"),
+  CHAT_PROVIDER: z.enum(["google", "openai"]).default("google"),
+  // Model names default per CHAT_PROVIDER (see MODEL_DEFAULTS); CHAT_MODEL_FALLBACK="none" disables failover.
+  CHAT_MODEL: optional(z.string()),
+  CHAT_MODEL_FALLBACK: optional(z.string()),
+  JUDGE_MODEL: optional(z.string()),
   EMBEDDING_PROVIDER: z.enum(["google", "openai", "mock"]).default("google"),
   EMBEDDING_MODEL: z.string().default("gemini-embedding-001"),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
@@ -31,14 +30,30 @@ const schema = z.object({
   DAILY_BUDGET_USD: z.coerce.number().positive().default(2),
 });
 
-export type Env = z.infer<typeof schema>;
+/** Sensible per-provider models; the judge gets its own model (separate quota pool, no failover). */
+export const MODEL_DEFAULTS = {
+  google: { chat: "gemini-2.5-flash", fallback: "gemini-3.5-flash-lite", judge: "gemini-3.5-flash" },
+  openai: { chat: "gpt-4o-mini", fallback: "none", judge: "gpt-4o" },
+} as const;
+
+const resolved = schema.transform((e) => {
+  const d = MODEL_DEFAULTS[e.CHAT_PROVIDER];
+  return {
+    ...e,
+    CHAT_MODEL: e.CHAT_MODEL ?? d.chat,
+    CHAT_MODEL_FALLBACK: e.CHAT_MODEL_FALLBACK ?? d.fallback,
+    JUDGE_MODEL: e.JUDGE_MODEL ?? d.judge,
+  };
+});
+
+export type Env = z.output<typeof resolved>;
 
 let cached: Env | undefined;
 
 /** Lazily parsed so `next build` and unit tests don't need a full environment. */
 export function getEnv(): Env {
   if (cached) return cached;
-  const parsed = schema.safeParse(process.env);
+  const parsed = resolved.safeParse(process.env);
   if (!parsed.success) {
     const issues = parsed.error.issues
       .map((i) => `${i.path.join(".")}: ${i.message}`)
@@ -49,4 +64,4 @@ export function getEnv(): Env {
   return cached;
 }
 
-export const envSchema = schema;
+export const envSchema = resolved;

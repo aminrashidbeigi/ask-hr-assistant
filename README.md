@@ -176,11 +176,11 @@ pnpm eval --retrieval-only     # retrieval metrics for both modes + threshold sw
 | **Context headers on chunks** (`{title} — {section}`) | Short policy chunks lose their topic without it; contextual chunking improved retrieval in practice. Chunks follow headings (≈50–210 tokens here) instead of a fixed 300–500-token window because the sections are short and merging them blurred citations. |
 | **Persona filter in the retrieval layer** | It is access control, not prompt politeness: a shift-only chunk can never reach an office employee's prompt, whatever the model is told. In production the persona comes from SSO / HR master data, not a dropdown. |
 | **Incremental, hash-based ingestion** | Re-embed only changed chunks (document hash → chunk hash), delete orphans, print a summary. Cheap, reproducible re-indexing — the same discipline as production LLM labelling pipelines. |
-| **Provider-agnostic models** | `CHAT_PROVIDER`/`CHAT_MODEL` env switch (Gemini, Mistral, OpenAI) with automatic failover to a fallback model on quota/overload errors. Embeddings are stored as 1536 dims whatever the provider. |
+| **Provider-agnostic models** | `CHAT_PROVIDER`/`CHAT_MODEL` env switch (Gemini, OpenAI) with automatic failover to a fallback model on quota/overload errors. Embeddings are stored as 1536 dims whatever the provider. |
 
 ### A note on free tiers
 
-The demo is built to run at zero cost, which shaped some choices: Gemini's free tier has per-minute *and* daily request caps per model (e.g. 5/min and a small daily cap on the 2.5/3.5 flash models, 15/min on flash-lite), so chat uses a fast primary model with failover to a slower fallback, thinking is switched off or minimal (it added 8–17 s per call), and the eval is paced. A production deployment would use a paid tier or an EU-hosted model; Mistral (EU) is supported via `CHAT_PROVIDER=mistral`.
+The demo is built to run at zero cost, which shaped some choices: Gemini's free tier has per-minute *and* daily request caps per model (e.g. 5/min and a small daily cap on the 2.5/3.5 flash models, 15/min on flash-lite), so chat uses a fast primary model with failover to a slower fallback, thinking is switched off or minimal (it added 8–17 s per call), and the eval is paced. A production deployment would use a paid tier or an EU-hosted model (for example Azure OpenAI in an EU region); the provider switch is a few lines in `lib/ai/models.ts`.
 
 ## Responsible AI and compliance (Germany / EU)
 
@@ -216,7 +216,7 @@ docker compose up --build app                        # http://localhost:3000
 The app container reads model settings from a `.env` file next to `docker-compose.yml` (Compose loads it automatically; it is git-ignored). For real answers add, for example:
 
 ```bash
-GOOGLE_GENERATIVE_AI_API_KEY=...   # or: CHAT_PROVIDER=mistral and MISTRAL_API_KEY=...
+GOOGLE_GENERATIVE_AI_API_KEY=...
 EMBEDDING_PROVIDER=google          # must match the provider used for `pnpm ingest`
 ADMIN_USER=admin
 ADMIN_PASSWORD=choose-a-password   # default is admin/admin, for local use only
@@ -224,11 +224,11 @@ ADMIN_PASSWORD=choose-a-password   # default is admin/admin, for local use only
 
 Without a key the app, `/admin` and `/api/health` still work; chat answers with a friendly error and logs the cause.
 
-`EMBEDDING_PROVIDER=mock` uses deterministic fake vectors (CI uses it), which is enough to run the app and retrieval tests, but answers need a real chat model. Because the model is configured through environment variables, it can be swapped for an EU-hosted model (for example Azure OpenAI EU or Mistral) or a local one behind an OpenAI-compatible endpoint — relevant for data residency.
+`EMBEDDING_PROVIDER=mock` uses deterministic fake vectors (CI uses it), which is enough to run the app and retrieval tests, but answers need a real chat model. Because models are configured through environment variables and one small module (`lib/ai/models.ts`), the provider can be swapped for an EU-hosted one (for example Azure OpenAI in an EU region) — relevant for data residency.
 
 ### Environment variables
 
-See [`.env.example`](.env.example). Key ones: `DATABASE_URL`, `GOOGLE_GENERATIVE_AI_API_KEY` (or `MISTRAL_API_KEY` / `OPENAI_API_KEY`), `CHAT_PROVIDER`, `CHAT_MODEL`, `CHAT_MODEL_FALLBACK`, `JUDGE_MODEL`, `EMBEDDING_PROVIDER`, `MAX_VECTOR_DISTANCE`, `MIN_RELEVANCE`, `TOP_K`, `LANGFUSE_*`, `UPSTASH_REDIS_REST_*`, `ADMIN_USER`/`ADMIN_PASSWORD`, `DAILY_BUDGET_USD`.
+See [`.env.example`](.env.example). Key ones: `DATABASE_URL`, `GOOGLE_GENERATIVE_AI_API_KEY` (or `OPENAI_API_KEY`), `CHAT_PROVIDER`, `CHAT_MODEL`, `CHAT_MODEL_FALLBACK`, `JUDGE_MODEL`, `EMBEDDING_PROVIDER`, `MAX_VECTOR_DISTANCE`, `MIN_RELEVANCE`, `TOP_K`, `LANGFUSE_*`, `UPSTASH_REDIS_REST_*`, `ADMIN_USER`/`ADMIN_PASSWORD`, `DAILY_BUDGET_USD`.
 
 ## Deploy
 

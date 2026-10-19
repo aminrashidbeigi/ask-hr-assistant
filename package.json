@@ -21,11 +21,11 @@
     "retention": "tsx scripts/retention.ts",
     "eval:compare": "tsx eval/compare.ts",
     "eval:readme": "tsx scripts/readme-eval.ts",
-    "demo:gif": "node scripts/record-demo.mjs"
+    "demo:gif": "node scripts/record-demo.mjs",
+    "check:llm": "tsx scripts/check-llm.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "4.0.99",
-    "@ai-sdk/mistral": "4.0.66",
     "@ai-sdk/openai": "4.0.96",
     "@ai-sdk/otel": "1.0.143",
     "@ai-sdk/react": "4.0.147",

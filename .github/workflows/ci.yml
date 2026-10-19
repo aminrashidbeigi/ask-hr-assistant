@@ -74,7 +74,6 @@ jobs:
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
-      MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
       CHAT_PROVIDER: ${{ vars.CHAT_PROVIDER }}
       CHAT_MODEL: ${{ vars.CHAT_MODEL }}
       CHAT_MODEL_FALLBACK: ${{ vars.CHAT_MODEL_FALLBACK }}
@@ -83,7 +82,7 @@ jobs:
       - name: Skip when secrets are missing
         id: gate
         run: |
-          if [ -z "$DATABASE_URL" ] || { [ -z "$GOOGLE_GENERATIVE_AI_API_KEY" ] && [ -z "$MISTRAL_API_KEY" ]; }; then
+          if [ -z "$DATABASE_URL" ] || [ -z "$GOOGLE_GENERATIVE_AI_API_KEY" ]; then
             echo "run=false" >> "$GITHUB_OUTPUT"; echo "Model/database secrets are not configured; skipping eval."
           else
             echo "run=true" >> "$GITHUB_OUTPUT"
