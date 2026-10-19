@@ -1,36 +1,5 @@
-import fs from "node:fs";
 import path from "node:path";
-import matter from "gray-matter";
-import { z } from "zod";
-
-const POLICY_DIR = path.join(process.cwd(), "data", "policies");
-
-const frontMatter = z.object({
-  id: z.string().min(1),
-  title: z.string().min(1),
-  lang: z.enum(["en", "de"]),
-  audience: z.array(z.enum(["all", "shift", "office"])).min(1),
-  version: z.string(),
-  effective_date: z.union([z.string(), z.date()]),
-  owner: z.string(),
-  url: z.string().startsWith("/policies/"),
-});
-
-type Doc = z.infer<typeof frontMatter> & { file: string; body: string };
-
-export function loadCorpus(dir = POLICY_DIR): Doc[] {
-  const docs: Doc[] = [];
-  for (const lang of ["en", "de"]) {
-    const langDir = path.join(dir, lang);
-    for (const f of fs.readdirSync(langDir).filter((f) => f.endsWith(".md")).sort()) {
-      const file = path.join(langDir, f);
-      const parsed = matter(fs.readFileSync(file, "utf8"));
-      const fm = frontMatter.parse(parsed.data);
-      docs.push({ ...fm, file, body: parsed.content });
-    }
-  }
-  return docs;
-}
+import { loadCorpus, type PolicyDoc as Doc } from "../lib/rag/corpus";
 
 /** Numbers normalised across DE/EN formats ("2,5" -> "2.5", "1.500"/"1,500" -> "1500"). */
 function numbers(text: string): string[] {
@@ -77,4 +46,4 @@ function main() {
   console.log("Corpus OK");
 }
 
-if (process.argv[1]?.endsWith("validate-corpus.ts")) main();
+main();
