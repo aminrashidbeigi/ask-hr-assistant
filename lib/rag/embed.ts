@@ -40,6 +40,14 @@ export function retryAfterMs(err: unknown): number | undefined {
   return m ? Math.ceil(parseFloat(m[1]) * 1000) + 1000 : undefined;
 }
 
+/** A provider asking us to wait longer than this means a daily quota: fail fast instead of sleeping for hours. */
+export const MAX_RETRY_WAIT_MS = 120_000;
+
+export function withinRetryBudget(err: unknown): boolean {
+  const hint = retryAfterMs(err);
+  return hint === undefined || hint <= MAX_RETRY_WAIT_MS;
+}
+
 export async function withRetry<T>(
   fn: () => Promise<T>,
   { attempts = 6, baseMs = 500 }: { attempts?: number; baseMs?: number } = {},
@@ -50,7 +58,7 @@ export async function withRetry<T>(
       return await fn();
     } catch (err) {
       lastError = err;
-      if (i === attempts - 1) break;
+      if (i === attempts - 1 || !withinRetryBudget(err)) break;
       // Honour the provider's own rate-limit hint (free tiers), else exponential backoff with jitter.
       const delay = retryAfterMs(err) ?? baseMs * 2 ** i + Math.random() * 100;
       if (delay > 5000) console.warn(`rate limited, waiting ${Math.round(delay / 1000)}s before retrying…`);
@@ -104,7 +112,19 @@ export async function embedTexts(texts: string[], batchSize = 64): Promise<Embed
   return { embeddings, tokens };
 }
 
+const queryCache = new Map<string, EmbedResult>();
+
+/** Query embeddings are cached in-process: repeated questions (and the eval's two retrieval modes) cost nothing. */
 export async function embedQuery(text: string): Promise<EmbedResult> {
+  const cached = queryCache.get(text);
+  if (cached) return { embeddings: cached.embeddings, tokens: 0 };
+  const result = await embedQueryUncached(text);
+  if (queryCache.size >= 500) queryCache.delete(queryCache.keys().next().value!);
+  queryCache.set(text, result);
+  return result;
+}
+
+async function embedQueryUncached(text: string): Promise<EmbedResult> {
   if (getEnv().EMBEDDING_PROVIDER === "mock") {
     return { embeddings: [mockEmbedding(text)], tokens: estimateTokens(text) };
   }

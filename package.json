@@ -17,11 +17,15 @@
     "validate:corpus": "tsx scripts/validate-corpus.ts",
     "e2e": "playwright test",
     "db:check": "tsx scripts/db-check.ts",
-    "logs": "tsx scripts/logs.ts"
+    "logs": "tsx scripts/logs.ts",
+    "retention": "tsx scripts/retention.ts",
+    "eval:compare": "tsx eval/compare.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "4.0.99",
+    "@ai-sdk/mistral": "4.0.66",
     "@ai-sdk/openai": "4.0.96",
+    "@ai-sdk/otel": "1.0.143",
     "@ai-sdk/react": "4.0.147",
     "@base-ui/react": "1.9.0",
     "@langfuse/client": "6.0.0",
@@ -66,5 +70,8 @@
     "typescript": "5",
     "vitest": "5.0.5"
   },
-  "packageManager": "pnpm@12.14.0"
+  "packageManager": "pnpm@12.14.0",
+  "engines": {
+    "node": ">=22"
+  }
 }

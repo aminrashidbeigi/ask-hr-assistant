@@ -6,8 +6,9 @@ const optional = <T extends z.ZodType>(schema: T) =>
 
 const schema = z.object({
   GOOGLE_GENERATIVE_AI_API_KEY: optional(z.string()),
+  MISTRAL_API_KEY: optional(z.string()),
   OPENAI_API_KEY: optional(z.string()),
-  CHAT_PROVIDER: z.enum(["google", "openai"]).default("google"),
+  CHAT_PROVIDER: z.enum(["google", "mistral", "openai"]).default("google"),
   CHAT_MODEL: z.string().default("gemini-2.5-flash"),
   /** "none" disables failover */
   CHAT_MODEL_FALLBACK: z.preprocess((v) => (v === "" ? undefined : v), z.string().default("gemini-3.5-flash-lite")),

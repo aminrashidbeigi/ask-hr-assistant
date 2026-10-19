@@ -28,7 +28,7 @@ describe("mockEmbedding", () => {
   });
 });
 
-import { retryAfterMs } from "@/lib/rag/embed";
+import { retryAfterMs, withinRetryBudget } from "@/lib/rag/embed";
 
 describe("retryAfterMs", () => {
   it("reads the provider's retry hint and adds a safety margin", () => {
@@ -36,5 +36,13 @@ describe("retryAfterMs", () => {
   });
   it("returns undefined when there is no hint", () => {
     expect(retryAfterMs(new Error("boom"))).toBeUndefined();
+  });
+});
+
+describe("withinRetryBudget", () => {
+  it("allows short waits and rejects daily-quota waits", () => {
+    expect(withinRetryBudget(new Error("Please retry in 44s."))).toBe(true);
+    expect(withinRetryBudget(new Error("Please retry in 50702s."))).toBe(false);
+    expect(withinRetryBudget(new Error("no hint"))).toBe(true);
   });
 });

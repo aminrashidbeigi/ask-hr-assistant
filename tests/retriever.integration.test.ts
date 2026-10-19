@@ -50,7 +50,9 @@ describe.skipIf(!run)("retriever (integration)", () => {
   it("returns cross-lingual hits for an English question", async () => {
     const { chunks } = await retrieve({ query: "How many vacation days per year?", persona: "all", lang: "en", k: 6 });
     expect(chunks.map((c) => c.lang)).toContain("en");
-    expect(chunks[0].policyId).toBe("vacation-policy");
+    expect(chunks.some((c) => c.policyId === "vacation-policy")).toBe(true);
+    // top-1 precision only holds for real embeddings; the CI mock is a bag-of-words stand-in
+    if (realEmbeddings) expect(chunks[0].policyId).toBe("vacation-policy");
   });
 
   it.skipIf(!realEmbeddings)("reports found=false for an out-of-scope question", async () => {

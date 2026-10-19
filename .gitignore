@@ -42,9 +42,6 @@ yarn-error.log*
 next-env.d.ts
 
 # local artifacts
-/eval/reports/*.json
-/eval/reports/*.md
-!/eval/reports/latest.md
 /test-results/
 /playwright-report/
 .neon

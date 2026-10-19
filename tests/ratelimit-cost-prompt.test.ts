@@ -83,6 +83,12 @@ describe("system prompt", () => {
     expect(REFUSAL_PATTERN.test(`${REFUSAL_PHRASE_DE}. Soll ich die Frage weiterleiten?`)).toBe(true);
     expect(REFUSAL_PATTERN.test("You get 30 vacation days [1].")).toBe(false);
   });
+
+  it("refusal pattern also recognises 'forward your question to HR' offers", () => {
+    expect(REFUSAL_PATTERN.test("This is a personal matter. Would you like me to forward your question to the HR team?")).toBe(true);
+    expect(REFUSAL_PATTERN.test("Möchten Sie, dass ich Ihre Frage an das HR-Team weiterleite?")).toBe(true);
+    expect(REFUSAL_PATTERN.test("Contact HR at hr@voltwerk.example for your vacation balance.")).toBe(false);
+  });
 });
 
 describe("detectLang", () => {

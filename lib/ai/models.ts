@@ -1,4 +1,5 @@
 import { google } from "@ai-sdk/google";
+import { mistral } from "@ai-sdk/mistral";
 import { openai } from "@ai-sdk/openai";
 import { wrapLanguageModel, type LanguageModel, type LanguageModelMiddleware } from "ai";
 import { getEnv } from "@/lib/env";
@@ -31,6 +32,10 @@ export function chatProviderOptions(modelId = getEnv().CHAT_MODEL) {
 
 function baseModel(modelId: string) {
   const env = getEnv();
+  if (env.CHAT_PROVIDER === "mistral") {
+    if (!env.MISTRAL_API_KEY) throw new Error("MISTRAL_API_KEY is required for CHAT_PROVIDER=mistral");
+    return mistral(modelId);
+  }
   if (env.CHAT_PROVIDER === "openai") {
     if (!env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is required for CHAT_PROVIDER=openai");
     return openai(modelId);

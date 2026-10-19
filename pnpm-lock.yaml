@@ -169,9 +169,15 @@ importers:
       '@ai-sdk/google':
         specifier: 4.0.99
         version: 4.0.99(zod@4.6.7)
+      '@ai-sdk/mistral':
+        specifier: 4.0.66
+        version: 4.0.66(zod@4.6.7)
       '@ai-sdk/openai':
         specifier: 4.0.96
         version: 4.0.96(zod@4.6.7)
+      '@ai-sdk/otel':
+        specifier: 1.0.143
+        version: 1.0.143(zod@4.6.7)
       '@ai-sdk/react':
         specifier: 4.0.147
         version: 4.0.147(react@19.3.0)(zod@4.6.7)
@@ -317,11 +323,21 @@ packages:
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
+  '@ai-sdk/mistral@4.0.66':
+    resolution: {integrity: sha512-EP2pgIOkGVSblGEHGFFL2DQX6ZEneLx9WRHLFXUc/xDAmVk/5EQi1tk3EX1rZKMGludkSjETNF3FfDcpLY3KyA==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+
   '@ai-sdk/openai@4.0.96':
     resolution: {integrity: sha512-tCFB99pvAs5MAEVVT2RhtUUa5KsWcQMrdTZNfmW1cKeHQzNvUVlkMAAcWiR/PYOg2NuCvc5TDNBW/7tGK6spJw==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
+
+  '@ai-sdk/otel@1.0.143':
+    resolution: {integrity: sha512-VrFBXjg3/nBS0+adOyjEYQ6g9BQVdJmuK2eACqWCYd9GAQW8siQcukBht+U0cjHxiwqEkDPg1NDKeXoaew9c+Q==}
+    engines: {node: '>=22'}
 
   '@ai-sdk/provider-utils@5.0.62':
     resolution: {integrity: sha512-//6sHa6QNQdM2KHOg5pxp1UMFQB4U8cqdw/kSm9BMr0DLeaFgG3TXZfxhpwRZmxgBpOrzMVZ/gwLXH309+Ortw==}
@@ -4544,11 +4560,25 @@ snapshots:
       pkce-challenge: 5.0.1
       zod: 4.6.7
 
+  '@ai-sdk/mistral@4.0.66(zod@4.6.7)':
+    dependencies:
+      '@ai-sdk/provider': 4.0.29
+      '@ai-sdk/provider-utils': 5.0.62(zod@4.6.7)
+      zod: 4.6.7
+
   '@ai-sdk/openai@4.0.96(zod@4.6.7)':
     dependencies:
       '@ai-sdk/provider': 4.0.29
       '@ai-sdk/provider-utils': 5.0.62(zod@4.6.7)
       zod: 4.6.7
+
+  '@ai-sdk/otel@1.0.143(zod@4.6.7)':
+    dependencies:
+      '@ai-sdk/provider': 4.0.29
+      '@opentelemetry/api': 1.9.1
+      ai: 7.0.143(zod@4.6.7)
+    transitivePeerDependencies:
+      - zod
 
   '@ai-sdk/provider-utils@5.0.62(zod@4.6.7)':
     dependencies:

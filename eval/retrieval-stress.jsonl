@@ -1,0 +1,20 @@
+{"id": "s01", "question": "eAU", "lang": "de", "persona": "all", "expected_answer": "", "expected_doc_ids": ["sick-leave-policy"], "type": "stress", "evidence": ["eAU"]}
+{"id": "s02", "question": "BEM Eingliederung", "lang": "de", "persona": "all", "expected_answer": "", "expected_doc_ids": ["sick-leave-policy"], "type": "stress", "evidence": ["BEM"]}
+{"id": "s03", "question": "Entgeltfortzahlung 6 Wochen", "lang": "de", "persona": "all", "expected_answer": "", "expected_doc_ids": ["sick-leave-policy"], "type": "stress", "evidence": ["Entgeltfortzahlung"]}
+{"id": "s04", "question": "Krankengeld", "lang": "de", "persona": "all", "expected_answer": "", "expected_doc_ids": ["sick-leave-policy"], "type": "stress", "evidence": ["Krankengeld", "sickness benefit"]}
+{"id": "s05", "question": "Verpflegungsmehraufwand", "lang": "de", "persona": "office", "expected_answer": "", "expected_doc_ids": ["travel-expenses-policy"], "type": "stress", "evidence": ["Verpflegungsmehraufwand"]}
+{"id": "s06", "question": "Kilometerpauschale 0,30", "lang": "de", "persona": "office", "expected_answer": "", "expected_doc_ids": ["travel-expenses-policy"], "type": "stress", "evidence": ["0,30", "0.30"]}
+{"id": "s07", "question": "HinSchG", "lang": "de", "persona": "all", "expected_answer": "", "expected_doc_ids": ["code-of-conduct-policy"], "type": "stress", "evidence": ["HinSchG"]}
+{"id": "s08", "question": "AGG Diskriminierung", "lang": "de", "persona": "all", "expected_answer": "", "expected_doc_ids": ["code-of-conduct-policy"], "type": "stress", "evidence": ["AGG"]}
+{"id": "s09", "question": "S3 Sicherheitsschuhe", "lang": "de", "persona": "shift", "expected_answer": "", "expected_doc_ids": ["safety-ppe-policy"], "type": "stress", "evidence": ["S3"]}
+{"id": "s10", "question": "85 dB(A) Gehörschutz", "lang": "de", "persona": "shift", "expected_answer": "", "expected_doc_ids": ["safety-ppe-policy"], "type": "stress", "evidence": ["85 dB"]}
+{"id": "s11", "question": "Mutterschutz 12 Wochen", "lang": "de", "persona": "all", "expected_answer": "", "expected_doc_ids": ["parental-leave-policy"], "type": "stress", "evidence": ["12 Wochen", "12 weeks"]}
+{"id": "s12", "question": "ElterngeldPlus", "lang": "de", "persona": "all", "expected_answer": "", "expected_doc_ids": ["parental-leave-policy"], "type": "stress", "evidence": ["ElterngeldPlus"]}
+{"id": "s13", "question": "Buddy", "lang": "en", "persona": "all", "expected_answer": "", "expected_doc_ids": ["onboarding-probation-policy"], "type": "stress", "evidence": ["Buddy", "buddy"]}
+{"id": "s14", "question": "lock-out tag-out", "lang": "en", "persona": "shift", "expected_answer": "", "expected_doc_ids": ["safety-ppe-policy"], "type": "stress", "evidence": ["Lockout", "lock-out"]}
+{"id": "s15", "question": "VPN public Wi-Fi", "lang": "en", "persona": "office", "expected_answer": "", "expected_doc_ids": ["remote-work-policy"], "type": "stress", "evidence": ["VPN"]}
+{"id": "s16", "question": "per diem EUR 28 full day", "lang": "en", "persona": "office", "expected_answer": "", "expected_doc_ids": ["travel-expenses-policy"], "type": "stress", "evidence": ["EUR 28", "28 EUR"]}
+{"id": "s17", "question": "Schichttausch 48 Stunden", "lang": "de", "persona": "shift", "expected_answer": "", "expected_doc_ids": ["shift-allowances-policy"], "type": "stress", "evidence": ["48 Stunden", "48 hours"]}
+{"id": "s18", "question": "Sonderurlaub Hochzeit", "lang": "de", "persona": "all", "expected_answer": "", "expected_doc_ids": ["vacation-policy"], "type": "stress", "evidence": ["Hochzeit", "wedding"]}
+{"id": "s19", "question": "Betriebsrat Kontakt", "lang": "de", "persona": "all", "expected_answer": "", "expected_doc_ids": ["code-of-conduct-policy"], "type": "stress", "evidence": ["betriebsrat@voltwerk.example"]}
+{"id": "s20", "question": "Arbeitszeitkonto +100", "lang": "de", "persona": "office", "expected_answer": "", "expected_doc_ids": ["overtime-policy"], "type": "stress", "evidence": ["+100"]}

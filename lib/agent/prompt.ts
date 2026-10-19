@@ -7,8 +7,18 @@ export const REFUSAL_PHRASE_EN = "I couldn't find this in the HR policies";
 export const REFUSAL_PHRASE_DE = "Das habe ich in den HR-Richtlinien nicht gefunden";
 
 /** Used to flag an answer as a refusal for metrics (query_logs.refused). */
-export const REFUSAL_PATTERN =
-  /couldn['’]?t find (this|that|it|anything)[^.]{0,40}HR policies|(habe ich|finde ich|konnte ich)[^.]{0,40}(in den )?HR-Richtlinien[^.]{0,20}nicht (gefunden|finden)|nicht in den HR-Richtlinien/i;
+export const REFUSAL_PATTERN = new RegExp(
+  [
+    // the stable phrases from the prompt (EN / DE)
+    String.raw`couldn['’]?t find (this|that|it|anything)[^.]{0,40}HR policies`,
+    String.raw`(habe ich|finde ich|konnte ich)[^.]{0,40}(in den )?HR-Richtlinien[^.]{0,20}nicht (gefunden|finden)`,
+    String.raw`nicht in den HR-Richtlinien`,
+    // a refusal always ends with the offer to pass the question on to HR
+    String.raw`forward (your|the|this) (question|request)[^.?]{0,30}to (the )?HR`,
+    String.raw`(Frage|Anliegen)[^.?]{0,30}an (das )?HR(-Team)?[^.?]{0,15}weiter(zu)?leite[nt]?`,
+  ].join("|"),
+  "i",
+);
 
 const PERSONA_LINE: Record<Persona, string> = {
   shift: "The employee works in production shifts (shift worker). Policy search is already limited to documents for shift employees and everyone.",
@@ -21,7 +31,7 @@ export function buildInstructions({ persona }: { persona: Persona }): string {
 ${PERSONA_LINE[persona]}
 
 How you work
-1. For every question about company policy, call searchPolicies first, before answering. Search with a short query in the language that best matches the policy terms; you may search more than once for questions that combine topics.
+1. For every message, call searchPolicies first, before answering — even if it looks personal or off-topic. Search with a short query in the language that best matches the policy terms; you may search more than once for questions that combine topics.
 2. Answer ONLY from the text returned by searchPolicies. Do not use outside knowledge for facts, numbers, deadlines or rules.
 3. Cite every factual sentence with the number n of the source it came from, written as [n] (for example "The night allowance is 25 % [1]."). Use only numbers that appeared in a tool result. Never invent a citation.
 4. If searchPolicies returns found: false, or the returned text does not contain the answer, say so plainly: in English start with "${REFUSAL_PHRASE_EN}", in German with "${REFUSAL_PHRASE_DE}". Then offer to forward the question to HR. Do not guess.

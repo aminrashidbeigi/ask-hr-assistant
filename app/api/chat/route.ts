@@ -3,16 +3,15 @@ import { randomUUID } from "node:crypto";
 import {
   createUIMessageStream,
   createUIMessageStreamResponse,
-  isStepCount,
-  streamText,
   toUIMessageStream,
   type ModelMessage,
 } from "ai";
+import { after } from "next/server";
 import { z } from "zod";
-import { chatProviderOptions, getChatModel, isProviderBusy } from "@/lib/ai/models";
-import { buildInstructions, PROMPT_VERSION, REFUSAL_PATTERN } from "@/lib/agent/prompt";
+import { isProviderBusy } from "@/lib/ai/models";
+import { PROMPT_VERSION, REFUSAL_PATTERN } from "@/lib/agent/prompt";
 import { detectLang } from "@/lib/agent/lang";
-import { createCollector, createTools } from "@/lib/agent/tools";
+import { runAgent } from "@/lib/agent/run";
 import type { AskHrUIMessage } from "@/lib/agent/types";
 import { getEnv } from "@/lib/env";
 import { budgetState, getTodaySpendUsd, insertQueryLog } from "@/lib/metrics/log";
@@ -113,10 +112,9 @@ export async function POST(req: Request) {
   const spanTraceId = trace.getActiveSpan()?.spanContext().traceId;
   const traceId = spanTraceId && !/^0+$/.test(spanTraceId) ? spanTraceId : queryLogId;
   const log = withTrace(traceId);
-  const collector = createCollector();
-  let ttftMs: number | undefined;
   let logged = false;
-  let modelUsed = env.CHAT_MODEL;
+  // set once the agent run starts (inside the UI stream); writeLog only runs after that
+  let run: ReturnType<typeof runAgent> | undefined;
 
   const writeLog = (extra: {
     answer?: string;
@@ -127,6 +125,7 @@ export async function POST(req: Request) {
     if (logged) return;
     logged = true;
     const answer = extra.answer ?? "";
+    const collector = run!.collector;
     const anySearchFound = collector.searches.some((s) => s.found);
     const refused =
       !extra.error &&
@@ -145,11 +144,11 @@ export async function POST(req: Request) {
       escalated: collector.escalated,
       toolCalls: collector.searches.length + (collector.escalated ? 1 : 0),
       latencyMs: Math.round(performance.now() - started),
-      ttftMs: ttftMs ?? null,
+      ttftMs: run!.state.ttftMs ?? null,
       inputTokens: extra.inputTokens ?? null,
       outputTokens: extra.outputTokens ?? null,
-      costUsd: chatCostUsd(modelUsed, extra.inputTokens, extra.outputTokens),
-      model: modelUsed,
+      costUsd: chatCostUsd(run!.state.modelUsed, extra.inputTokens, extra.outputTokens),
+      model: run!.state.modelUsed,
       promptVersion: PROMPT_VERSION,
       error: extra.error ?? null,
     });
@@ -160,44 +159,19 @@ export async function POST(req: Request) {
       writer.write({ type: "start" });
       writer.write({ type: "data-meta", data: { queryLogId } });
 
-      const tools = createTools({
-        persona,
-        collector,
-        onSources: (sources) => writer.write({ type: "data-sources", id: "sources", data: sources }),
-      });
-
-      const result = streamText({
-        model: getChatModel(env.CHAT_MODEL, true, (id) => {
-          modelUsed = id;
-        }),
-        instructions: buildInstructions({ persona }),
+      run = runAgent({
         messages,
-        tools,
-        stopWhen: isStepCount(4),
-        temperature: 0.1,
-        providerOptions: chatProviderOptions(),
-        runtimeContext: { persona, promptVersion: PROMPT_VERSION, sessionId: sessionId ?? "none" },
-        telemetry: {
-          functionId: "ask-hr-chat",
-          includeRuntimeContext: { persona: true, promptVersion: true, sessionId: true },
-        },
-        onChunk: ({ chunk }) => {
-          if (ttftMs === undefined && chunk.type === "text-delta") {
-            ttftMs = Math.round(performance.now() - started);
-          }
-        },
-        onEnd: async (event) => {
-          await writeLog({
-            answer: event.finalStep.text,
-            inputTokens: event.usage.inputTokens,
-            outputTokens: event.usage.outputTokens,
-          });
-        },
-        onError: async ({ error }) => {
+        persona,
+        sessionId,
+        started,
+        onSources: (sources) => writer.write({ type: "data-sources", id: "sources", data: sources }),
+        onEnd: (end) => writeLog(end),
+        onError: async (error) => {
           log.error({ err: String(error) }, "chat stream failed");
           await writeLog({ error: String(error).slice(0, 500) });
         },
       });
+      const result = run.result;
 
       writer.merge(toUIMessageStream({ stream: result.stream, sendStart: false }));
     },
@@ -208,6 +182,11 @@ export async function POST(req: Request) {
       }
       return "Something went wrong. Please try again. / Es ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.";
     },
+  });
+
+  // serverless: make sure spans reach Langfuse before the function is frozen
+  after(async () => {
+    await globalThis.__langfuseProcessor?.forceFlush();
   });
 
   return createUIMessageStreamResponse({ stream });
