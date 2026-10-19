@@ -19,6 +19,7 @@
     "db:check": "tsx scripts/db-check.ts"
   },
   "dependencies": {
+    "@ai-sdk/google": "4.0.99",
     "@ai-sdk/openai": "4.0.96",
     "@ai-sdk/react": "4.0.147",
     "@base-ui/react": "1.9.0",

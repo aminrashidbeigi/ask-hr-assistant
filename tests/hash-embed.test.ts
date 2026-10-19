@@ -27,3 +27,14 @@ describe("mockEmbedding", () => {
     expect(cosine(q, related)).toBeGreaterThan(cosine(q, unrelated));
   });
 });
+
+import { retryAfterMs } from "@/lib/rag/embed";
+
+describe("retryAfterMs", () => {
+  it("reads the provider's retry hint and adds a safety margin", () => {
+    expect(retryAfterMs(new Error("Quota exceeded. Please retry in 44.845689821s."))).toBe(45846);
+  });
+  it("returns undefined when there is no hint", () => {
+    expect(retryAfterMs(new Error("boom"))).toBeUndefined();
+  });
+});

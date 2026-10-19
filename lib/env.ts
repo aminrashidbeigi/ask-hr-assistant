@@ -5,11 +5,13 @@ const optional = <T extends z.ZodType>(schema: T) =>
   z.preprocess((v) => (v === "" ? undefined : v), schema.optional());
 
 const schema = z.object({
+  GOOGLE_GENERATIVE_AI_API_KEY: optional(z.string()),
   OPENAI_API_KEY: optional(z.string()),
-  CHAT_MODEL: z.string().default("gpt-4o-mini"),
-  JUDGE_MODEL: z.string().default("gpt-4o"),
-  EMBEDDING_MODEL: z.string().default("text-embedding-3-small"),
-  EMBEDDING_PROVIDER: z.enum(["openai", "mock"]).default("openai"),
+  CHAT_PROVIDER: z.enum(["google", "openai"]).default("google"),
+  CHAT_MODEL: z.string().default("gemini-2.5-flash"),
+  JUDGE_MODEL: z.string().default("gemini-3.5-flash"),
+  EMBEDDING_PROVIDER: z.enum(["google", "openai", "mock"]).default("google"),
+  EMBEDDING_MODEL: z.string().default("gemini-embedding-001"),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   DATABASE_URL_UNPOOLED: optional(z.string()),
   RETRIEVAL_MODE: z.enum(["hybrid", "vector"]).default("hybrid"),
