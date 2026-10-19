@@ -213,6 +213,17 @@ pnpm db:migrate && pnpm ingest                       # EMBEDDING_PROVIDER=mock w
 docker compose up --build app                        # http://localhost:3000
 ```
 
+The app container reads model settings from a `.env` file next to `docker-compose.yml` (Compose loads it automatically; it is git-ignored). For real answers add, for example:
+
+```bash
+GOOGLE_GENERATIVE_AI_API_KEY=...   # or: CHAT_PROVIDER=mistral and MISTRAL_API_KEY=...
+EMBEDDING_PROVIDER=google          # must match the provider used for `pnpm ingest`
+ADMIN_USER=admin
+ADMIN_PASSWORD=choose-a-password   # default is admin/admin, for local use only
+```
+
+Without a key the app, `/admin` and `/api/health` still work; chat answers with a friendly error and logs the cause.
+
 `EMBEDDING_PROVIDER=mock` uses deterministic fake vectors (CI uses it), which is enough to run the app and retrieval tests, but answers need a real chat model. Because the model is configured through environment variables, it can be swapped for an EU-hosted model (for example Azure OpenAI EU or Mistral) or a local one behind an OpenAI-compatible endpoint — relevant for data residency.
 
 ### Environment variables

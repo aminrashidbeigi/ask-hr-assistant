@@ -13,6 +13,7 @@ import { PROMPT_VERSION } from "@/lib/agent/prompt";
 import { isRefusal } from "@/lib/agent/refusal";
 import { detectLang } from "@/lib/agent/lang";
 import { runAgent } from "@/lib/agent/run";
+import { createCollector } from "@/lib/agent/tools";
 import type { AskHrUIMessage } from "@/lib/agent/types";
 import { getEnv } from "@/lib/env";
 import { budgetState, getTodaySpendUsd, insertQueryLog } from "@/lib/metrics/log";
@@ -126,7 +127,8 @@ export async function POST(req: Request) {
     if (logged) return;
     logged = true;
     const answer = extra.answer ?? "";
-    const collector = run!.collector;
+    // `run` is unset when the failure happened before the agent started (e.g. a missing API key)
+    const collector = run?.collector ?? createCollector();
     const refused = !extra.error && isRefusal(answer, collector.searches);
     return insertQueryLog({
       id: queryLogId,
@@ -142,11 +144,11 @@ export async function POST(req: Request) {
       escalated: collector.escalated,
       toolCalls: collector.searches.length + (collector.escalated ? 1 : 0),
       latencyMs: Math.round(performance.now() - started),
-      ttftMs: run!.state.ttftMs ?? null,
+      ttftMs: run?.state.ttftMs ?? null,
       inputTokens: extra.inputTokens ?? null,
       outputTokens: extra.outputTokens ?? null,
-      costUsd: chatCostUsd(run!.state.modelUsed, extra.inputTokens, extra.outputTokens),
-      model: run!.state.modelUsed,
+      costUsd: chatCostUsd(run?.state.modelUsed ?? env.CHAT_MODEL, extra.inputTokens, extra.outputTokens),
+      model: run?.state.modelUsed ?? env.CHAT_MODEL,
       promptVersion: PROMPT_VERSION,
       error: extra.error ?? null,
     });
@@ -175,6 +177,7 @@ export async function POST(req: Request) {
     },
     onError: (error) => {
       log.error({ err: String(error) }, "ui stream error");
+      void writeLog({ error: String(error).slice(0, 500) }); // no-op if the agent already logged it
       if (isProviderBusy(error)) {
         return "The assistant is very busy right now (free-tier model limit). Please try again in a minute. / Der Assistent ist gerade stark ausgelastet. Bitte versuchen Sie es in einer Minute erneut.";
       }
