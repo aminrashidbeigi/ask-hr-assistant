@@ -42,6 +42,14 @@ const bodySchema = z.object({
   sessionId: z.string().min(8).max(64).optional(),
 });
 
+/** What the user sees when something fails: "busy" for provider quota/overload, generic otherwise. */
+function userFacingError(error: unknown): string {
+  if (isProviderBusy(error)) {
+    return "The assistant is very busy right now (free-tier model limit). Please try again in a minute. / Der Assistent ist gerade stark ausgelastet. Bitte versuchen Sie es in einer Minute erneut.";
+  }
+  return "Something went wrong. Please try again. / Es ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.";
+}
+
 function json(status: number, error: string, message: string, headers?: Record<string, string>) {
   return Response.json({ error, message }, { status, headers });
 }
@@ -173,15 +181,13 @@ export async function POST(req: Request) {
       });
       const result = run.result;
 
-      writer.merge(toUIMessageStream({ stream: result.stream, sendStart: false }));
+      // model errors surface inside this merged stream, so it needs the same friendly mapping
+      writer.merge(toUIMessageStream({ stream: result.stream, sendStart: false, onError: userFacingError }));
     },
     onError: (error) => {
       log.error({ err: String(error) }, "ui stream error");
       void writeLog({ error: String(error).slice(0, 500) }); // no-op if the agent already logged it
-      if (isProviderBusy(error)) {
-        return "The assistant is very busy right now (free-tier model limit). Please try again in a minute. / Der Assistent ist gerade stark ausgelastet. Bitte versuchen Sie es in einer Minute erneut.";
-      }
-      return "Something went wrong. Please try again. / Es ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.";
+      return userFacingError(error);
     },
   });
 
