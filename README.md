@@ -4,7 +4,7 @@
 
 Built with the Vercel AI SDK, Postgres + pgvector, Next.js and Langfuse.
 
-> **Live demo:** https://ask-rag.vercel.app · **Eval report:** [eval/reports/latest.md](eval/reports/latest.md)
+> **Live demo:** https://ask-hr-assistant.vercel.app · **Eval report:** [eval/reports/latest.md](eval/reports/latest.md)
 >
 > The demo runs on free-tier model quotas. When a quota is used up the chat shows a friendly "very busy, try again in a minute" message instead of an answer; retrieval, sources and `/admin` keep working.
 
