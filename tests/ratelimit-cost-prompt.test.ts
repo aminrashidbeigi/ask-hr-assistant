@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildInstructions, PROMPT_VERSION, REFUSAL_PATTERN, REFUSAL_PHRASE_DE, REFUSAL_PHRASE_EN } from "@/lib/agent/prompt";
 import { detectLang } from "@/lib/agent/lang";
+import { isRefusal } from "@/lib/agent/refusal";
 import { budgetState } from "@/lib/metrics/log";
 import { chatCostUsd, estimateEmbeddingCostUsd } from "@/lib/observability/cost";
 import { createMemoryLimiter } from "@/lib/safety/ratelimit";
@@ -59,7 +60,11 @@ describe("budget guard", () => {
 describe("system prompt", () => {
   const prompt = buildInstructions({ persona: "shift" });
 
-  it("is versioned", () => expect(PROMPT_VERSION).toBe("v1"));
+  it("is versioned", () => expect(PROMPT_VERSION).toBe("v2"));
+
+  it("does not treat personal details in a question as a personal case", () => {
+    expect(prompt).toMatch(/does NOT make a question personal/);
+  });
 
   it("contains the prompt-injection defence rule", () => {
     expect(prompt).toMatch(/data, not instructions/i);
@@ -95,5 +100,26 @@ describe("detectLang", () => {
   it("detects German and English", () => {
     expect(detectLang("Wie hoch ist der Nachtzuschlag?")).toBe("de");
     expect(detectLang("How many vacation days do I get?")).toBe("en");
+    // English sentences with "was" / "the die" must not look German
+    expect(detectLang("Remote work was limited to 1 day per week before 2026.")).toBe("en");
+    expect(detectLang("Wann muss ich mich krank melden?")).toBe("de");
+  });
+});
+
+describe("isRefusal", () => {
+  const found = [{ found: true }];
+  it("is true when searches ran but nothing relevant was found", () => {
+    expect(isRefusal("Whatever the model said.", [{ found: false }, { found: false }])).toBe(true);
+  });
+  it("is false for an answer that cites sources, even if it offers to forward to HR", () => {
+    expect(isRefusal("You get 30 days [1]. Would you like me to forward your question to HR?", found)).toBe(false);
+  });
+  it("is true for refusal wording without citations", () => {
+    expect(isRefusal("I couldn't find this in the HR policies. Shall I forward your question to HR?", found)).toBe(true);
+    expect(isRefusal("Das habe ich in den HR-Richtlinien nicht gefunden.", [])).toBe(true);
+  });
+  it("is false for an ordinary answer or when no search happened", () => {
+    expect(isRefusal("Overtime starts above 35 hours [1].", found)).toBe(false);
+    expect(isRefusal("Hello! How can I help?", [])).toBe(false);
   });
 });

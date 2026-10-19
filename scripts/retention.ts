@@ -6,10 +6,13 @@ config();
 
 import { closeDb, getDb } from "../lib/db/client";
 
-/** GDPR data minimisation: delete query logs (and their feedback, via cascade) older than N days (default 90). */
+/**
+ * GDPR data minimisation: delete query logs (and their feedback, via cascade) older than N days (default 90).
+ * `pnpm retention 0` deletes everything — use it to clear test traffic before going live.
+ */
 async function main() {
   const days = Number(process.argv[2] ?? process.env.RETENTION_DAYS ?? 90);
-  if (!Number.isInteger(days) || days < 1) throw new Error("retention days must be a positive integer");
+  if (!Number.isInteger(days) || days < 0) throw new Error("retention days must be a non-negative integer");
   const deleted = await getDb().execute(
     sql`DELETE FROM query_logs WHERE created_at < now() - make_interval(days => ${days}::int) RETURNING id`,
   );

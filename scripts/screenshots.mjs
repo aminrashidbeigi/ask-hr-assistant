@@ -1,6 +1,9 @@
 // Captures README screenshots with Playwright. Usage: node scripts/screenshots.mjs [empty|chat|admin|all]
 // Needs the dev server on :3112 (pnpm dev -p 3112). "chat" talks to the real model.
 import { chromium } from "@playwright/test";
+import { config } from "dotenv";
+
+config({ path: ".env.local" }); // ADMIN_USER / ADMIN_PASSWORD for the /admin screenshot
 
 const BASE = process.env.BASE_URL ?? "http://localhost:3112";
 const what = process.argv[2] ?? "all";
@@ -20,9 +23,10 @@ if (what === "empty" || what === "all") {
 }
 
 if (what === "admin" || what === "all") {
+  if (!process.env.ADMIN_USER || !process.env.ADMIN_PASSWORD) throw new Error("Set ADMIN_USER and ADMIN_PASSWORD in .env.local");
   const ctx = await browser.newContext({
     viewport: { width: 1280, height: 1100 },
-    httpCredentials: { username: process.env.ADMIN_USER ?? "amin", password: process.env.ADMIN_PASSWORD },
+    httpCredentials: { username: process.env.ADMIN_USER, password: process.env.ADMIN_PASSWORD },
   });
   const page = await ctx.newPage();
   await page.goto(`${BASE}/admin`);

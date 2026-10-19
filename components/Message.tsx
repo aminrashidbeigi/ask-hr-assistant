@@ -3,8 +3,8 @@
 import { Button } from "@/components/ui/button";
 import { FeedbackButtons } from "@/components/FeedbackButtons";
 import { RichText } from "@/components/RichText";
-import { REFUSAL_PATTERN } from "@/lib/agent/prompt";
 import { parseCitationNumbers } from "@/lib/agent/citations";
+import { isRefusal } from "@/lib/agent/refusal";
 import type { AskHrUIMessage, Source } from "@/lib/agent/types";
 
 const TOOL_LABEL: Record<string, string> = {
@@ -61,7 +61,7 @@ export function Message({
   const escalated = message.parts.some(
     (p) => p.type === "tool-escalateToHR" && (p as { state?: string }).state === "output-available",
   );
-  const refused = !streaming && !escalated && REFUSAL_PATTERN.test(text);
+  const refused = !streaming && !escalated && isRefusal(text, []);
 
   return (
     <div className="flex" data-testid="assistant-message">

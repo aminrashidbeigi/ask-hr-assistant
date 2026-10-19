@@ -59,7 +59,9 @@ jobs:
       - run: pnpm db:migrate
       - run: pnpm ingest
       - name: Re-running ingest must embed nothing (idempotency)
-        run: pnpm ingest | tee ingest.log && grep -q "0 embedded" ingest.log
+        run: |
+          pnpm ingest | tee ingest.log
+          grep -Eq "chunks: +0 embedded" ingest.log
       - run: pnpm test
 
   eval:

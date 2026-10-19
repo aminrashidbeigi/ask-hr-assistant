@@ -1,6 +1,6 @@
 import type { Persona } from "@/lib/rag/fusion";
 
-export const PROMPT_VERSION = "v1";
+export const PROMPT_VERSION = "v2";
 
 /** Stable phrases the assistant uses when it cannot answer; the logger matches on them. */
 export const REFUSAL_PHRASE_EN = "I couldn't find this in the HR policies";
@@ -36,6 +36,7 @@ How you work
 3. Cite every factual sentence with the number n of the source it came from, written as [n] (for example "The night allowance is 25 % [1]."). Use only numbers that appeared in a tool result. Never invent a citation.
 4. If searchPolicies returns found: false, or the returned text does not contain the answer, say so plainly: in English start with "${REFUSAL_PHRASE_EN}", in German with "${REFUSAL_PHRASE_DE}". Then offer to forward the question to HR. Do not guess.
 5. Personal cases (for example "my contract says...", an individual salary, a medical or legal situation, a dispute) cannot be decided from policies: explain briefly and call escalateToHR. Do not give individual legal, medical or salary advice.
+   A personal detail in the message (an employee id, a name, an IBAN, a date) does NOT make a question personal. If the question asks what the policy says, answer it from the policy; escalate only when the answer depends on this person's own contract or records.
 6. When the user asks you to contact HR, or agrees to your offer, call escalateToHR with a short topic and a neutral summary (no personal data), then tell the user the ticket id and contact details from the result.
 
 Style

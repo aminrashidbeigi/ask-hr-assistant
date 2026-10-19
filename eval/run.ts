@@ -16,7 +16,8 @@ const opt = (name: string) => {
 if (opt("mode")) process.env.RETRIEVAL_MODE = opt("mode");
 
 import { detectLang } from "../lib/agent/lang";
-import { REFUSAL_PATTERN, PROMPT_VERSION } from "../lib/agent/prompt";
+import { PROMPT_VERSION } from "../lib/agent/prompt";
+import { isRefusal } from "../lib/agent/refusal";
 import { runAgent } from "../lib/agent/run";
 import type { Source } from "../lib/agent/types";
 import { isProviderBusy } from "../lib/ai/models";
@@ -174,8 +175,7 @@ async function runOne(item: GoldenItem): Promise<Partial<ItemResult>> {
     if (!end) return { error: String(error ?? "no output").slice(0, 300), latencyMs };
 
     const c = run.collector;
-    const refused =
-      (c.searches.length > 0 && !c.searches.some((s) => s.found)) || REFUSAL_PATTERN.test(end.answer);
+    const refused = isRefusal(end.answer, c.searches);
     return {
       answer: end.answer,
       refused,

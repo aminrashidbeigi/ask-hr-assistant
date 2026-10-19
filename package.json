@@ -19,7 +19,9 @@
     "db:check": "tsx scripts/db-check.ts",
     "logs": "tsx scripts/logs.ts",
     "retention": "tsx scripts/retention.ts",
-    "eval:compare": "tsx eval/compare.ts"
+    "eval:compare": "tsx eval/compare.ts",
+    "eval:readme": "tsx scripts/readme-eval.ts",
+    "demo:gif": "node scripts/record-demo.mjs"
   },
   "dependencies": {
     "@ai-sdk/google": "4.0.99",
@@ -63,6 +65,8 @@
     "drizzle-kit": "0.31.11",
     "eslint": "9",
     "eslint-config-next": "16.4.2",
+    "gifenc": "1.0.3",
+    "pngjs": "7.0.0",
     "prettier": "3.9.10",
     "shadcn": "4.22.0",
     "tailwindcss": "4",

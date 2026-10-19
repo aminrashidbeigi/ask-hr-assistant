@@ -9,7 +9,8 @@ import {
 import { after } from "next/server";
 import { z } from "zod";
 import { isProviderBusy } from "@/lib/ai/models";
-import { PROMPT_VERSION, REFUSAL_PATTERN } from "@/lib/agent/prompt";
+import { PROMPT_VERSION } from "@/lib/agent/prompt";
+import { isRefusal } from "@/lib/agent/refusal";
 import { detectLang } from "@/lib/agent/lang";
 import { runAgent } from "@/lib/agent/run";
 import type { AskHrUIMessage } from "@/lib/agent/types";
@@ -126,10 +127,7 @@ export async function POST(req: Request) {
     logged = true;
     const answer = extra.answer ?? "";
     const collector = run!.collector;
-    const anySearchFound = collector.searches.some((s) => s.found);
-    const refused =
-      !extra.error &&
-      ((collector.searches.length > 0 && !anySearchFound) || REFUSAL_PATTERN.test(answer));
+    const refused = !extra.error && isRefusal(answer, collector.searches);
     return insertQueryLog({
       id: queryLogId,
       traceId,
