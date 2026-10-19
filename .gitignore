@@ -47,3 +47,4 @@ next-env.d.ts
 !/eval/reports/latest.md
 /test-results/
 /playwright-report/
+.neon

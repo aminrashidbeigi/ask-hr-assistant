@@ -7,7 +7,8 @@ config({ path: ".env.local" });
 config();
 
 async function main() {
-  const url = process.env.DATABASE_URL;
+  // DDL belongs on the direct (unpooled) connection when one exists (Neon provides both).
+  const url = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is not set");
   const sql = postgres(url, { max: 1, prepare: false });
   try {

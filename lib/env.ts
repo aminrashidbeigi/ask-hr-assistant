@@ -11,6 +11,7 @@ const schema = z.object({
   EMBEDDING_MODEL: z.string().default("text-embedding-3-small"),
   EMBEDDING_PROVIDER: z.enum(["openai", "mock"]).default("openai"),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
+  DATABASE_URL_UNPOOLED: optional(z.string()),
   RETRIEVAL_MODE: z.enum(["hybrid", "vector"]).default("hybrid"),
   MIN_RELEVANCE: z.coerce.number().default(0),
   TOP_K: z.coerce.number().int().positive().default(6),
