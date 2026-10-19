@@ -16,6 +16,7 @@ const schema = z.object({
   DATABASE_URL_UNPOOLED: optional(z.string()),
   RETRIEVAL_MODE: z.enum(["hybrid", "vector"]).default("hybrid"),
   MIN_RELEVANCE: z.coerce.number().default(0),
+  MAX_VECTOR_DISTANCE: z.coerce.number().positive().default(0.33),
   TOP_K: z.coerce.number().int().positive().default(6),
   LANGFUSE_PUBLIC_KEY: optional(z.string()),
   LANGFUSE_SECRET_KEY: optional(z.string()),
