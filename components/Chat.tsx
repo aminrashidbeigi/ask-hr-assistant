@@ -2,30 +2,30 @@
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Message, viewOf } from "@/components/Message";
+import { ArrowDownIcon, SquarePenIcon } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Composer } from "@/components/Composer";
+import { Logo } from "@/components/Logo";
+import { Message, ThinkingDots, viewOf } from "@/components/Message";
 import { PersonaSelect, type Persona } from "@/components/PersonaSelect";
 import { SourcesPanel } from "@/components/SourcesPanel";
+import { StarterGrid } from "@/components/StarterGrid";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import type { AskHrUIMessage } from "@/lib/agent/types";
 
-const STARTERS = [
-  { text: "Wie hoch ist der Nachtzuschlag?", persona: "shift" as Persona },
-  { text: "Wie viele Urlaubstage habe ich?", persona: "all" as Persona },
-  { text: "Wie melde ich mich krank?", persona: "all" as Persona },
-  { text: "How many days can I work from home?", persona: "office" as Persona },
-  { text: "From how many hours does overtime start?", persona: "shift" as Persona },
-  { text: "What is the CEO's salary?", persona: "all" as Persona },
-];
+const SESSION_KEY = "ask-hr-session";
 
-function sessionId(): string {
+function sessionId(fresh = false): string {
   try {
-    const existing = sessionStorage.getItem("ask-hr-session");
-    if (existing) return existing;
-    const fresh = crypto.randomUUID();
-    sessionStorage.setItem("ask-hr-session", fresh);
-    return fresh;
+    if (!fresh) {
+      const existing = sessionStorage.getItem(SESSION_KEY);
+      if (existing) return existing;
+    }
+    const id = crypto.randomUUID();
+    sessionStorage.setItem(SESSION_KEY, id);
+    return id;
   } catch {
     return crypto.randomUUID();
   }
@@ -44,170 +44,181 @@ function friendlyError(message: string): string {
 
 export function Chat() {
   const [persona, setPersona] = useState<Persona>("all");
-  const [sid] = useState(() => (typeof window === "undefined" ? "ssr-session" : sessionId()));
+  const [sid, setSid] = useState(() => (typeof window === "undefined" ? "ssr-session" : sessionId()));
 
   const transport = useMemo(() => new DefaultChatTransport<AskHrUIMessage>({ api: "/api/chat" }), []);
-  const { messages, sendMessage, status, error, stop } = useChat<AskHrUIMessage>({ transport });
+  const { messages, sendMessage, setMessages, status, error, stop } = useChat<AskHrUIMessage>({ transport });
 
-  const [input, setInput] = useState("");
-  const [active, setActive] = useState<{ messageId: string; n: number } | null>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const [sheet, setSheet] = useState<{ messageId: string; n: number | null } | null>(null);
+  const scroller = useRef<HTMLDivElement>(null);
+  const [nearBottom, setNearBottom] = useState(true);
   const busy = status === "submitted" || status === "streaming";
+  const empty = messages.length === 0;
+
+  const onScroll = useCallback(() => {
+    const el = scroller.current;
+    if (el) setNearBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 120);
+  }, []);
+
+  const scrollToEnd = useCallback((behavior: ScrollBehavior = "smooth") => {
+    const el = scroller.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior });
+  }, []);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, status]);
+    if (nearBottom) scrollToEnd();
+  }, [messages, status, nearBottom, scrollToEnd]);
 
-  const lastAssistantWithSources = [...messages]
-    .reverse()
-    .find((m) => m.role === "assistant" && viewOf(m).sources.length > 0);
-  const panelMessage = messages.find((m) => m.id === active?.messageId) ?? lastAssistantWithSources;
-  const panelView = panelMessage ? viewOf(panelMessage) : { sources: [], citedNumbers: new Set<number>() };
-  const lastLang = [...messages].reverse().find((m) => m.role === "user");
-  const germanUser = lastLang
+  const sheetMessage = sheet ? messages.find((m) => m.id === sheet.messageId) : undefined;
+  const sheetView = sheetMessage ? viewOf(sheetMessage) : { sources: [], citedNumbers: new Set<number>() };
+
+  const lastUser = [...messages].reverse().find((m) => m.role === "user");
+  const germanUser = lastUser
     ? /[äöüß]|\b(wie|ich|der|die|das|ist|und|nicht|habe|kann)\b/i.test(
-        lastLang.parts.map((p) => (p.type === "text" ? p.text : "")).join(" "),
+        lastUser.parts.map((p) => (p.type === "text" ? p.text : "")).join(" "),
       )
     : false;
 
   function submit(text: string, personaOverride?: Persona) {
     const trimmed = text.trim();
     if (!trimmed || busy) return;
-    setInput("");
+    setNearBottom(true);
     // persona and session id travel with every request, so they are never stale
     void sendMessage({ text: trimmed }, { body: { persona: personaOverride ?? persona, sessionId: sid } });
   }
 
-  const sourcesPanel = (
-    <SourcesPanel
-      sources={panelView.sources}
-      citedNumbers={panelView.citedNumbers}
-      activeN={active?.n ?? null}
-      onSelect={(n) => panelMessage && setActive({ messageId: panelMessage.id, n })}
-    />
-  );
+  function newChat() {
+    void stop();
+    setMessages([]);
+    setSheet(null);
+    setSid(sessionId(true));
+  }
+
+  const lastIndex = messages.length - 1;
+  const showThinking = status === "submitted";
 
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-6xl flex-col">
-      <header className="flex items-center justify-between gap-3 border-b px-4 py-3">
-        <div>
-          <h1 className="text-lg font-semibold leading-tight">Ask HR</h1>
-          <p className="text-xs text-muted-foreground">Voltwerk Manufacturing GmbH · DE / EN</p>
+    <div className="flex h-dvh flex-col">
+      <header className="z-30 shrink-0 border-b border-transparent bg-background/80 backdrop-blur-md data-[scrolled=true]:border-border" data-scrolled={!empty}>
+        <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-3 px-4">
+          <div className="flex items-center gap-2.5">
+            <Logo className="size-7" />
+            <div className="leading-tight">
+              <h1 className="text-[15px] font-semibold">Ask HR</h1>
+              <p className="hidden text-[11px] text-muted-foreground sm:block">Voltwerk Manufacturing GmbH · DE / EN</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            {!empty && (
+              <Button type="button" variant="ghost" size="sm" onClick={newChat} className="h-9 gap-1.5 rounded-full px-3">
+                <SquarePenIcon />
+                <span>New chat · Neu</span>
+              </Button>
+            )}
+            <ThemeToggle />
+          </div>
         </div>
-        <PersonaSelect value={persona} onChange={setPersona} />
       </header>
 
-      <div className="flex min-h-0 flex-1">
-        <main className="flex min-w-0 flex-1 flex-col">
-          <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4" aria-live="polite">
-            {messages.length === 0 && (
-              <div className="space-y-4 pt-6">
-                <div>
-                  <h2 className="text-xl font-semibold">How can I help? · Wie kann ich helfen?</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Ask about vacation, sick leave, shift allowances, overtime and more — in German or English.
-                    <br />
-                    Fragen zu Urlaub, Krankmeldung, Schichtzuschlägen, Überstunden und mehr – auf Deutsch oder Englisch.
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {STARTERS.map((s) => (
-                    <Button
-                      key={s.text}
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-auto whitespace-normal py-1.5 text-left"
-                      onClick={() => {
-                        setPersona(s.persona);
-                        submit(s.text, s.persona);
-                      }}
-                    >
-                      {s.text}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {messages.map((m, i) => (
-              <Message
-                key={m.id}
-                message={m}
-                streaming={busy && i === messages.length - 1}
-                activeN={active?.messageId === m.id ? active.n : null}
-                onCite={(n) => setActive({ messageId: m.id, n })}
-                onContactHr={() =>
-                  submit(germanUser ? "Bitte leiten Sie meine Frage an HR weiter." : "Please forward my question to HR.")
-                }
-              />
-            ))}
-
-            {status === "submitted" && (
-              <div className="text-xs text-muted-foreground" role="status">
-                Thinking… · Einen Moment…
-              </div>
-            )}
-            {error && (
-              <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                {friendlyError(error.message)}
-              </div>
-            )}
-            <div ref={bottomRef} />
+      <main className="relative flex min-h-0 flex-1 flex-col">
+        {empty ? (
+          <div className="flex flex-[3] flex-col items-center justify-end px-4 pb-8 text-center">
+            <div className="animate-fade-up">
+              <Logo className="mx-auto mb-5 size-12" />
+              <h2 className="text-balance text-3xl font-semibold sm:text-4xl">How can I help? · Wie kann ich helfen?</h2>
+              <p className="mx-auto mt-3 max-w-2xl text-balance text-sm leading-relaxed text-muted-foreground">
+                Ask about vacation, sick leave, shift allowances, overtime and more — in German or English.
+                <br />
+                Fragen zu Urlaub, Krankmeldung, Schichtzuschlägen, Überstunden und mehr – auf Deutsch oder Englisch.
+              </p>
+            </div>
           </div>
+        ) : (
+          <div ref={scroller} onScroll={onScroll} className="min-h-0 flex-1 overflow-y-auto" aria-live="polite">
+            <div className="mx-auto w-full max-w-3xl space-y-7 px-4 pt-6 pb-10">
+              {messages.map((m, i) => (
+                <Message
+                  key={m.id}
+                  message={m}
+                  streaming={busy && i === lastIndex}
+                  activeN={sheet?.messageId === m.id ? sheet.n : null}
+                  onCite={(n) => setSheet({ messageId: m.id, n })}
+                  onOpenSources={(n) => setSheet({ messageId: m.id, n })}
+                  onContactHr={() =>
+                    submit(germanUser ? "Bitte leiten Sie meine Frage an HR weiter." : "Please forward my question to HR.")
+                  }
+                />
+              ))}
+              {showThinking && <ThinkingDots />}
+              {error && (
+                <div role="alert" className="rounded-2xl border border-destructive/30 bg-destructive/10 p-3.5 text-sm text-destructive">
+                  {friendlyError(error.message)}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
-          <details className="border-t px-4 py-2 text-sm lg:hidden" open={active !== null}>
-            <summary className="cursor-pointer select-none font-medium">
-              Sources · Quellen ({panelView.sources.length})
-            </summary>
-            <div className="max-h-64 overflow-y-auto pt-2">{sourcesPanel}</div>
-          </details>
-
-          <form
-            className="flex items-end gap-2 border-t p-3"
-            onSubmit={(e) => {
-              e.preventDefault();
-              submit(input);
-            }}
-          >
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  submit(input);
-                }
-              }}
-              placeholder="Ask a question… · Frage stellen…"
-              aria-label="Your question"
-              maxLength={2000}
-              rows={1}
-              className="max-h-32 min-h-10 resize-none"
+        <div className="relative shrink-0 px-4">
+          {!empty && (
+            <>
+              <div className="pointer-events-none absolute inset-x-0 -top-8 h-8 bg-gradient-to-t from-background to-transparent" />
+              {!nearBottom && (
+                <button
+                  type="button"
+                  onClick={() => scrollToEnd()}
+                  aria-label="Scroll to latest"
+                  className="absolute -top-14 left-1/2 z-10 flex size-9 -translate-x-1/2 items-center justify-center rounded-full border bg-card shadow-md transition-colors outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
+                  <ArrowDownIcon className="size-4" />
+                </button>
+              )}
+            </>
+          )}
+          <div className="mx-auto w-full max-w-3xl">
+            <Composer
+              persona={<PersonaSelect value={persona} onChange={setPersona} />}
+              busy={busy}
+              onSubmit={(t) => submit(t)}
+              onStop={() => void stop()}
+              autoFocus
             />
-            {busy ? (
-              <Button type="button" variant="outline" onClick={() => void stop()}>
-                Stop
-              </Button>
-            ) : (
-              <Button type="submit" disabled={!input.trim()}>
-                Send · Senden
-              </Button>
-            )}
-          </form>
-        </main>
+          </div>
+        </div>
 
-        <aside className="hidden w-80 shrink-0 overflow-y-auto border-l p-4 lg:block" aria-label="Sources">
-          <h2 className="mb-3 text-sm font-semibold">Sources · Quellen</h2>
-          {sourcesPanel}
-        </aside>
-      </div>
+        {empty ? (
+          <div className="flex flex-[4] justify-center overflow-y-auto px-4 pt-6 pb-4">
+            <div className="w-full max-w-3xl">
+              <StarterGrid
+                onPick={(s) => {
+                  setPersona(s.persona);
+                  submit(s.text, s.persona);
+                }}
+              />
+            </div>
+          </div>
+        ) : null}
+      </main>
 
-      <footer className="border-t px-4 py-2 text-center text-xs text-muted-foreground">
+      <footer className="shrink-0 px-4 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-center text-[11px] leading-snug text-muted-foreground">
         AI assistant. Answers are based on Voltwerk policies (fictional demo data). Verify important decisions with HR.
-        <br />
+        <br className="hidden sm:inline" />{" "}
         KI-Assistent. Antworten basieren auf Voltwerk-Richtlinien (fiktive Demodaten). Wichtige Entscheidungen bitte mit HR abklären.
       </footer>
+
+      <Sheet open={sheet !== null} onOpenChange={(open) => !open && setSheet(null)}>
+        <SheetContent
+          title="Sources · Quellen"
+          description={`${sheetView.sources.length} retrieved passages · ${sheetView.citedNumbers.size} cited`}
+        >
+          <SourcesPanel
+            sources={sheetView.sources}
+            citedNumbers={sheetView.citedNumbers}
+            activeN={sheet?.n ?? null}
+            onSelect={(n) => sheet && setSheet({ messageId: sheet.messageId, n })}
+          />
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

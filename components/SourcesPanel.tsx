@@ -1,10 +1,8 @@
 "use client";
 
+import { CheckIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
-import { Badge } from "@/components/ui/badge";
 import type { Source } from "@/lib/agent/types";
-
-const FLAG: Record<string, string> = { de: "🇩🇪", en: "🇬🇧" };
 
 /** "Overview + Allowances + Contact" → "Overview": merged-section labels are shortened for display. */
 const shortSection = (section: string) => section.split(" + ")[0];
@@ -23,7 +21,12 @@ export function SourcesPanel({
   const refs = useRef<Record<number, HTMLLIElement | null>>({});
 
   useEffect(() => {
-    if (activeN !== null) refs.current[activeN]?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    if (activeN === null) return;
+    // wait a frame so the sheet's slide-in doesn't fight the scroll
+    const id = requestAnimationFrame(() =>
+      refs.current[activeN]?.scrollIntoView({ block: "nearest", behavior: "smooth" }),
+    );
+    return () => cancelAnimationFrame(id);
   }, [activeN]);
 
   if (!sources.length) {
@@ -42,7 +45,7 @@ export function SourcesPanel({
   );
 
   return (
-    <ol className="space-y-2" data-testid="sources-list">
+    <ol className="space-y-2.5" data-testid="sources-list">
       {ordered.map((s) => {
         const cited = citedNumbers.has(s.n);
         return (
@@ -52,24 +55,38 @@ export function SourcesPanel({
               refs.current[s.n] = el;
             }}
             onClick={() => onSelect(s.n)}
-            className={`cursor-pointer rounded-lg border p-3 text-sm transition-colors ${
-              activeN === s.n ? "border-primary bg-accent" : "hover:bg-muted/60"
+            className={`cursor-pointer rounded-2xl border p-3.5 text-sm transition-colors ${
+              activeN === s.n ? "border-primary bg-primary/5 ring-1 ring-primary/30" : "hover:bg-muted/60"
             } ${cited ? "" : "opacity-70"}`}
           >
-            <div className="flex items-start justify-between gap-2">
-              <div className="font-medium leading-snug">
-                [{s.n}] {s.title}
-              </div>
-              <span title={s.lang === "de" ? "Deutsch" : "English"} aria-label={s.lang}>
-                {FLAG[s.lang] ?? s.lang}
+            <div className="flex items-start gap-2.5">
+              <span
+                className={`mt-px flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
+                  cited ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {s.n}
               </span>
+              <div className="min-w-0 flex-1">
+                <div className="font-medium leading-snug">{s.title}</div>
+                <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                  <span title={s.section}>{shortSection(s.section)}</span>
+                  <span aria-hidden="true">·</span>
+                  <span className="rounded bg-muted px-1 font-mono text-[10px] font-medium uppercase" title={s.lang === "de" ? "Deutsch" : "English"}>
+                    {s.lang}
+                  </span>
+                  {cited && (
+                    <span className="inline-flex items-center gap-0.5 text-primary">
+                      <CheckIcon className="size-3" /> cited
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-              <span title={s.section}>{shortSection(s.section)}</span>
-              {cited && <Badge variant="secondary">cited</Badge>}
-            </div>
-            <p className="mt-2 line-clamp-4 text-xs text-muted-foreground">{s.snippet.replace(/\*\*/g, "")}</p>
-            <div className="mt-2 text-xs text-muted-foreground/80">{s.url}</div>
+            <p className="mt-2.5 line-clamp-5 text-[13px] leading-relaxed text-muted-foreground">
+              {s.snippet.replace(/\*\*/g, "")}
+            </p>
+            <div className="mt-2 truncate font-mono text-[11px] text-muted-foreground/70">{s.url}</div>
           </li>
         );
       })}

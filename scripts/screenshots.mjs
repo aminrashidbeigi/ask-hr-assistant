@@ -40,7 +40,7 @@ if (what === "chat") {
   await page.getByLabel("Employee group").click();
   await page.getByRole("option", { name: /Shift/ }).click();
   await page.getByLabel("Your question").fill("Wie hoch ist der Nachtzuschlag?");
-  await page.getByRole("button", { name: /Send/ }).click();
+  await page.getByRole("button", { name: "Send" }).click();
   const answer = page.getByTestId("assistant-message").last();
   await answer.getByTestId("citation").first().waitFor({ timeout: 120_000 });
   await page.getByTestId("feedback").waitFor({ timeout: 60_000 });

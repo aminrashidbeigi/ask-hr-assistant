@@ -3,12 +3,20 @@
 import { Fragment, type ReactNode } from "react";
 
 const CITATION = /\[(\d+(?:\s*,\s*\d+)*)\]/g;
+const INLINE = /(\*\*[^*]+\*\*|HR-\d{4}-\d{4})/g;
 
-/** Inline markup: **bold** and citation markers like [1] or [1, 2], rendered as clickable badges. */
+/** Inline markup: **bold**, HR ticket ids and citation markers like [1] or [1, 2], rendered as clickable pills. */
 function renderInline(text: string, onCite: (n: number) => void, activeN: number | null): ReactNode[] {
-  return text.split(/(\*\*[^*]+\*\*)/g).flatMap((chunk, i) => {
+  return text.split(INLINE).flatMap((chunk, i) => {
     if (chunk.startsWith("**") && chunk.endsWith("**") && chunk.length > 4) {
       return [<strong key={`b${i}`}>{chunk.slice(2, -2)}</strong>];
+    }
+    if (/^HR-\d{4}-\d{4}$/.test(chunk)) {
+      return [
+        <code key={`t${i}`} className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[0.85em] font-medium">
+          {chunk}
+        </code>,
+      ];
     }
     const out: ReactNode[] = [];
     let last = 0;
@@ -23,13 +31,13 @@ function renderInline(text: string, onCite: (n: number) => void, activeN: number
             onClick={() => onCite(n)}
             aria-label={`Source ${n}`}
             data-testid="citation"
-            className={`mx-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-md border px-1 align-baseline text-[11px] font-medium leading-none transition-colors ${
+            className={`mx-0.5 inline-flex h-[18px] min-w-[18px] -translate-y-px items-center justify-center rounded-full px-1 align-middle text-[11px] font-semibold leading-none transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               activeN === n
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                ? "bg-primary text-primary-foreground"
+                : "bg-primary/12 text-primary hover:bg-primary hover:text-primary-foreground"
             }`}
           >
-            [{n}]
+            {n}
           </button>,
         );
       });
@@ -40,7 +48,7 @@ function renderInline(text: string, onCite: (n: number) => void, activeN: number
   });
 }
 
-/** Tiny markdown subset (paragraphs, bullet lists, bold) — enough for short policy answers. */
+/** Tiny markdown subset (headings, paragraphs, bullet and numbered lists, bold) — enough for short policy answers. */
 export function RichText({
   text,
   onCite,
@@ -51,27 +59,48 @@ export function RichText({
   activeN: number | null;
 }) {
   const blocks: ReactNode[] = [];
-  let list: string[] = [];
+  let list: { ordered: boolean; items: string[] } | null = null;
   const flushList = () => {
-    if (!list.length) return;
+    if (!list) return;
+    const { ordered, items } = list;
+    const Tag = ordered ? "ol" : "ul";
     blocks.push(
-      <ul key={`ul${blocks.length}`} className="my-1 list-disc space-y-1 pl-5">
-        {list.map((item, i) => (
-          <li key={i}>{renderInline(item, onCite, activeN)}</li>
+      <Tag
+        key={`l${blocks.length}`}
+        className={`space-y-1.5 pl-5 marker:text-muted-foreground ${ordered ? "list-decimal" : "list-disc"}`}
+      >
+        {items.map((item, i) => (
+          <li key={i} className="pl-1">
+            {renderInline(item, onCite, activeN)}
+          </li>
         ))}
-      </ul>,
+      </Tag>,
     );
-    list = [];
+    list = null;
   };
   for (const line of text.split("\n")) {
     const bullet = /^\s*[*\-•]\s+(.*)$/.exec(line);
-    if (bullet) {
-      list.push(bullet[1]);
+    const numbered = /^\s*\d+[.)]\s+(.*)$/.exec(line);
+    const item = bullet ?? numbered;
+    if (item) {
+      const ordered = !bullet;
+      if (list && list.ordered !== ordered) flushList();
+      list ??= { ordered, items: [] };
+      list.items.push(item[1]);
       continue;
     }
     flushList();
-    if (line.trim()) blocks.push(<p key={`p${blocks.length}`}>{renderInline(line, onCite, activeN)}</p>);
+    const heading = /^#{1,4}\s+(.*)$/.exec(line);
+    if (heading) {
+      blocks.push(
+        <h3 key={`h${blocks.length}`} className="pt-1 text-[15px] font-semibold">
+          {renderInline(heading[1], onCite, activeN)}
+        </h3>,
+      );
+    } else if (line.trim()) {
+      blocks.push(<p key={`p${blocks.length}`}>{renderInline(line, onCite, activeN)}</p>);
+    }
   }
   flushList();
-  return <div className="space-y-2 leading-relaxed">{blocks}</div>;
+  return <div className="space-y-3 leading-7">{blocks}</div>;
 }

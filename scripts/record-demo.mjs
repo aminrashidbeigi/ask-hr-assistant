@@ -50,7 +50,7 @@ async function ask(text) {
   await frame(500);
   if (DRY) return hold(600); // never talk to the model in dry mode
   const before = await page.getByTestId("assistant-message").count();
-  await page.getByRole("button", { name: /Send/ }).click();
+  await page.getByRole("button", { name: "Send" }).click();
   await waitLapse(async () => (await page.getByTestId("assistant-message").count()) > before);
   // streaming is over once the Stop button is gone again
   await waitLapse(async () => (await page.getByRole("button", { name: "Stop" }).count()) === 0);
@@ -73,6 +73,8 @@ await ask("Wie hoch ist der Nachtzuschlag?");
 if (!DRY) {
   await page.getByTestId("assistant-message").last().getByTestId("citation").first().click();
   await hold(1800);
+  await page.keyboard.press("Escape"); // close the sources sheet
+  await hold(600);
 }
 
 // 2. Same question, two groups → different answers
