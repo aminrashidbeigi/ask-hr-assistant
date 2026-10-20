@@ -45,6 +45,8 @@ if (what === "chat") {
   await answer.getByTestId("citation").first().waitFor({ timeout: 120_000 });
   await page.getByTestId("feedback").waitFor({ timeout: 60_000 });
   await answer.getByTestId("citation").first().click();
+  await page.getByRole("dialog").getByTestId("sources-list").waitFor();
+  await page.waitForTimeout(800); // let the sheet finish sliding in
   await page.screenshot({ path: out("chat-sources") });
 }
 

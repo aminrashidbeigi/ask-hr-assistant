@@ -8,11 +8,12 @@ Built with the Vercel AI SDK, Postgres + pgvector, Next.js and Langfuse.
 >
 > The demo runs on free-tier model quotas. When a quota is used up the chat shows a friendly "very busy, try again in a minute" message instead of an answer; retrieval, sources and `/admin` keep working.
 
-![Ask HR chat UI](docs/screenshots/home-empty.png)
+![Ask HR demo: German question, cited answer, source panel, persona switch, refusal and escalation](docs/demo.gif)
 
-<!-- Replace with docs/screenshots/chat-sources.png once generated: node scripts/screenshots.mjs chat -->
-
-<!-- DEMO_GIF -->
+<p align="center">
+  <img src="docs/screenshots/chat-sources.png" alt="Answer with citation chips and the slide-over sources panel" width="49%">
+  <img src="docs/screenshots/home-mobile.png" alt="Mobile layout" width="22%">
+</p>
 
 > **All policy documents are synthetic.** They describe a fictional company, "Voltwerk Manufacturing GmbH". No real company's internal data is used anywhere in this repository.
 

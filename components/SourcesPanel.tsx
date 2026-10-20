@@ -4,6 +4,15 @@ import { CheckIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 import type { Source } from "@/lib/agent/types";
 
+/** Markdown table pipes and bold markers are noise in a short preview. */
+const cleanSnippet = (snippet: string) =>
+  snippet
+    .replace(/\*\*/g, "")
+    .replace(/\|\s*-{3,}\s*(?=\|)/g, "")
+    .replace(/\s*\|\s*/g, " · ")
+    .replace(/(?:\s*·\s*){2,}/g, " · ")
+    .trim();
+
 /** "Overview + Allowances + Contact" → "Overview": merged-section labels are shortened for display. */
 const shortSection = (section: string) => section.split(" + ")[0];
 
@@ -84,7 +93,7 @@ export function SourcesPanel({
               </div>
             </div>
             <p className="mt-2.5 line-clamp-5 text-[13px] leading-relaxed text-muted-foreground">
-              {s.snippet.replace(/\*\*/g, "")}
+              {cleanSnippet(s.snippet)}
             </p>
             <div className="mt-2 truncate font-mono text-[11px] text-muted-foreground/70">{s.url}</div>
           </li>
