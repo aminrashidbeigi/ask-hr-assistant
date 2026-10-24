@@ -42,7 +42,7 @@ A chat assistant that
 - Rate limiting (Upstash, in-memory fallback), daily budget guard, provider failover
 - 👍/👎 feedback with comments, sent to Postgres and as a Langfuse score
 - `/admin` dashboard: KPIs, trends, **top unanswered questions** (the content-gap report for HR)
-- `/api/health`, uptime workflow, nightly eval workflow with a quality gate
+- `/api/health`, uptime workflow, manually triggered eval workflow with a quality gate
 - Runs on Vercel + Neon, or fully local with `docker compose`
 
 ## Architecture
@@ -151,7 +151,7 @@ Reports: [`eval/reports/latest.md`](eval/reports/latest.md) (full run, with fail
 
 ```bash
 pnpm eval                      # full golden set, writes eval/reports/<timestamp>.{md,json} and latest.md
-pnpm eval --subset 12          # stratified subset (nightly job)
+pnpm eval --subset 12          # stratified subset (manual eval workflow)
 pnpm eval --mode vector --tag vector && pnpm eval --mode hybrid --tag hybrid && pnpm eval:compare
 pnpm eval --retrieval-only     # retrieval metrics for both modes + threshold sweep, no chat or judge calls
 ```
@@ -166,7 +166,7 @@ pnpm eval --retrieval-only     # retrieval metrics for both modes + threshold sw
 - **Logs:** pino JSON with the trace id on every line; raw user text is never logged (redacted only).
 - **`/admin`** (basic auth): questions 24 h/7 d, refusal and escalation rate, 👍 ratio, p95 latency, TTFT p50, cost today/7 d, error rate; daily volume, refusal-rate and cost charts; top unanswered questions; most-retrieved documents; latest 👎 comments. Data is pseudonymous.
 - **SLOs:** availability 99 %, p95 latency < 8 s, error rate < 2 %, refusal rate on answerable questions < 10 %.
-- **Alerting (cheap parts):** [`uptime.yml`](.github/workflows/uptime.yml) calls `/api/health` every 30 minutes and fails (→ email) when unhealthy; the budget guard doubles as a cost alert and logs a warning at 80 %; [`eval.yml`](.github/workflows/eval.yml) runs a nightly 12-question eval and fails below 80 % correctness or refusal accuracy, which catches model or provider drift.
+- **Alerting (cheap parts):** [`uptime.yml`](.github/workflows/uptime.yml) calls `/api/health` when triggered manually and fails (→ email) when unhealthy; the budget guard doubles as a cost alert and logs a warning at 80 %; [`eval.yml`](.github/workflows/eval.yml) is a manually triggered (`workflow_dispatch`) 12-question eval that fails below 80 % correctness or refusal accuracy, which catches model or provider drift.
 
 ## Design decisions and trade-offs
 
@@ -187,7 +187,7 @@ The demo is built to run at zero cost, which shaped some choices: Gemini's free 
 
 ## Responsible AI and compliance (Germany / EU)
 
-- **GDPR.** Data minimisation: no user identity is stored; the session id is a random, client-generated value. PII is redacted (email, phone, IBAN, tax id, employee id, date of birth) before text reaches the LLM *and* before it is logged. Retention: `pnpm retention` (scheduled weekly) deletes `query_logs` older than 90 days; feedback cascades. EU hosting is possible (Neon Frankfurt, Vercel `fra1`); the model provider is swappable for an EU-hosted or self-hosted one. Note that free-tier model plans may use prompts for training — acceptable for synthetic data, not for real HR data.
+- **GDPR.** Data minimisation: no user identity is stored; the session id is a random, client-generated value. PII is redacted (email, phone, IBAN, tax id, employee id, date of birth) before text reaches the LLM *and* before it is logged. Retention: `pnpm retention` (manually triggered via the retention workflow) deletes `query_logs` older than 90 days; feedback cascades. EU hosting is possible (Neon Frankfurt, Vercel `fra1`); the model provider is swappable for an EU-hosted or self-hosted one. Note that free-tier model plans may use prompts for training — acceptable for synthetic data, not for real HR data.
 - **EU AI Act.** AI systems used for employment decisions (recruitment, promotion/termination, task allocation, performance monitoring) are high-risk under Annex III. This assistant only *informs* employees about policies and makes no decisions about them, so it is designed to stay outside that category. It still follows the transparency duty: the UI states that users are talking to an AI. Adding features such as performance evaluation would change the classification.
 - **Works council (Betriebsrat).** Technical systems that can monitor employee behaviour or performance are subject to co-determination (§ 87(1) No. 6 BetrVG). That is why logs are pseudonymous and the dashboard shows aggregate metrics only; the works council contact is part of the policy corpus.
 - **Known limitations:** regex-based PII detection is a baseline (production should add an NER detector such as Presidio); the golden set is small (36 questions) and the corpus synthetic; the judge model in the reported run is from the same family as the chat model (free-tier quota constraints), which can flatter scores; no SSO; the HR ticket is a stub.
@@ -241,7 +241,7 @@ See [`.env.example`](.env.example). Key ones: `DATABASE_URL`, `GOOGLE_GENERATIVE
 2. Create a Langfuse Cloud project (EU) and an optional Upstash Redis database.
 3. Import the repo in Vercel, set the environment variables for Production and Preview, deploy. `vercel.json` pins the function region to `fra1`; the chat route sets `maxDuration = 60`.
 4. Smoke test `/api/health` and one chat in each language; confirm the trace in Langfuse.
-5. Set the repository variable `APP_URL` for the uptime workflow, and secrets/variables for the nightly eval (`DATABASE_URL`, model key, `CHAT_*`).
+5. Set the repository variable `APP_URL` for the uptime workflow, and secrets/variables for the eval workflow (`DATABASE_URL`, model key, `CHAT_*`).
 
 CI (`ci.yml`) runs lint, typecheck, corpus validation, unit tests and the build on every PR, plus an integration job on a `pgvector/pgvector:pg16` service container (migrate → ingest with mock embeddings → idempotency check → retriever tests). Label a PR `run-eval` to also post an eval summary (needs secrets).
 
